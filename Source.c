@@ -1,11 +1,17 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include<stdio.h>
+#include<string.h>
+#include <ctype.h>
+#include <time.h>
+
 
 
 #define clientsFile "clients"
 #define compteursFile "compteur"
 #define facturesFile "factures.dat"
+#define usersFile "users.dat"
+
 
 //
 ////
@@ -43,6 +49,11 @@ typedef struct {
     char mode_paiement[20];
     char date_paiement[20];
 } Facture;
+typedef struct {
+    char username[20];
+    char password[20];
+    int role; // 1 = ADMIN (Tout faire), 2 = AGENT (Ajouter/Facturer seulement)
+} User;
 
 int estToutChiffres(const char* chaine) {
     if (strlen(chaine) == 0) return 0; // Vide
@@ -769,65 +780,65 @@ void afficherCompteurs() {
 }
 
 // --- Fonction Menu pour les Compteurs ---
-void menuCompteurs() {
-    int choix;
-    // Variables pour le test de simulation (Option 4)
-    int idTest, typeTest, indexTest;
-    char matTest[20];
-
-    do {
-        printf("\n====================================\n");
-        printf("       GESTION DES COMPTEURS        \n");
-        printf("====================================\n");
-        printf("1. Ajouter un nouveau compteur\n");
-        printf("2. Afficher la liste des compteurs\n");
-        printf("3. Supprimer un compteur\n");
-        printf("4. [TEST] Simuler une lecture (Test getCompteurInfo)\n");
-        printf("0. Retour au menu principal / Quitter\n");
-        printf("------------------------------------\n");
-        printf("Votre choix : ");
-
-        if (scanf("%d", &choix) != 1) {
-            while (getchar() != '\n'); // Vider buffer si lettre tapée
-            continue;
-        }
-        while (getchar() != '\n'); // Consommer le \n
-
-        switch (choix) {
-        case 1:
-            ajouterCompteur();
-            break;
-        case 2:
-            afficherCompteurs();
-            break;
-        case 3:
-            supprimerCompteur();
-            break;
-        case 4:
-            // Ce test simule ce que fera le module Facture plus tard
-            printf("\n--- Test Simulation Lecture ---\n");
-            printf("Entrez un ID Client pour voir si on trouve son compteur : ");
-            scanf("%d", &idTest);
-
-            // Appel de la fonction "magique"
-            if (getCompteurInfo(idTest, matTest, &typeTest, &indexTest)) {
-                printf(">> SUCCES ! Compteur trouve.\n");
-                printf("   Matricule : %s\n", matTest);
-                printf("   Type      : %d (%s)\n", typeTest, (typeTest == 1) ? "Mono" : "Tri");
-                printf("   Index     : %d kWh\n", indexTest);
-            }
-            else {
-                printf(">> ECHEC : Aucun compteur trouve pour ce client.\n");
-            }
-            break;
-        case 0:
-            printf("Retour...\n");
-            break;
-        default:
-            printf("Choix invalide.\n");
-        }
-    } while (choix != 0);
-}
+//void menuCompteurs() {
+//    int choix;
+//    // Variables pour le test de simulation (Option 4)
+//    int idTest, typeTest, indexTest;
+//    char matTest[20];
+//
+//    do {
+//        printf("\n====================================\n");
+//        printf("       GESTION DES COMPTEURS        \n");
+//        printf("====================================\n");
+//        printf("1. Ajouter un nouveau compteur\n");
+//        printf("2. Afficher la liste des compteurs\n");
+//        printf("3. Supprimer un compteur\n");
+//        printf("4. [TEST] Simuler une lecture (Test getCompteurInfo)\n");
+//        printf("0. Retour au menu principal / Quitter\n");
+//        printf("------------------------------------\n");
+//        printf("Votre choix : ");
+//
+//        if (scanf("%d", &choix) != 1) {
+//            while (getchar() != '\n'); // Vider buffer si lettre tapée
+//            continue;
+//        }
+//        while (getchar() != '\n'); // Consommer le \n
+//
+//        switch (choix) {
+//        case 1:
+//            ajouterCompteur();
+//            break;
+//        case 2:
+//            afficherCompteurs();
+//            break;
+//        case 3:
+//            supprimerCompteur();
+//            break;
+//        case 4:
+//            // Ce test simule ce que fera le module Facture plus tard
+//            printf("\n--- Test Simulation Lecture ---\n");
+//            printf("Entrez un ID Client pour voir si on trouve son compteur : ");
+//            scanf("%d", &idTest);
+//
+//            // Appel de la fonction "magique"
+//            if (getCompteurInfo(idTest, matTest, &typeTest, &indexTest)) {
+//                printf(">> SUCCES ! Compteur trouve.\n");
+//                printf("   Matricule : %s\n", matTest);
+//                printf("   Type      : %d (%s)\n", typeTest, (typeTest == 1) ? "Mono" : "Tri");
+//                printf("   Index     : %d kWh\n", indexTest);
+//            }
+//            else {
+//                printf(">> ECHEC : Aucun compteur trouve pour ce client.\n");
+//            }
+//            break;
+//        case 0:
+//            printf("Retour...\n");
+//            break;
+//        default:
+//            printf("Choix invalide.\n");
+//        }
+//    } while (choix != 0);
+//}
 
 //////
 ////
@@ -1074,84 +1085,186 @@ void afficherFactures() {
     }
     fclose(fic);
 }
+//////
+////
+//
 
+// permessions and roles
 
-// =========================================================
-//                  PROGRAMME PRINCIPAL
-// =========================================================
+//////
+////
+//
+
+int loginSystem() {
+    User uInput, uFile;
+    int tentatives = 0;
+    int connecte = 0; // 0 = Echec, Sinon renvoie le Rôle (1 ou 2)
+
+    printf("\n- - - - - - - - - - - - - - - - - - - - - - -\n");
+    printf("           Login Screen\n");
+    printf("- - - - - - - - - - - - - - - - - - - - - - -\n");
+
+    do {
+        printf("Entrer userName : ");
+        lireChaine(uInput.username, 20);
+        printf("Entrer Password : ");
+        lireChaine(uInput.password, 20); // Note: En console standard, le mot de passe s'affiche. 
+        // Pour le cacher (****), il faut des bibliothèques spécifiques (conio.h).
+
+        FILE* f = fopen(usersFile, "rb");
+        int found = 0;
+
+        while (fread(&uFile, sizeof(User), 1, f)) {
+            if (strcmp(uInput.username, uFile.username) == 0 && strcmp(uInput.password, uFile.password) == 0) {
+                connecte = uFile.role; // On récupère le rôle (1 ou 2)
+                found = 1;
+                break;
+            }
+        }
+        fclose(f);
+
+        if (found) {
+           // printf("\n>> Connexion reussie ! Bienvenue %s.\n", uInput.username);
+            return connecte; // On renvoie le rôle
+        }
+        else {
+            tentatives++;
+            printf(">> Erreur : Identifiants incorrects. (%d/3 essais)\n", tentatives);
+        }
+
+    } while (tentatives < 3);
+
+    printf(">> Trop d'erreurs. Fermeture du programme.\n");
+    return 0; // Echec total
+}
+
+void ajouterUtilisateur() {
+    User u;
+    char buffer[10];
+    printf("\n-----------------------------------------------------------------\n");
+    printf("\n Creation Nouvel Utilisateur \n");
+    printf("-----------------------------------------------------------------");
+    printf("Nom d'utilisateur : ");
+    lireChaine(u.username, 20);
+    printf("Mot de passe : ");
+    lireChaine(u.password, 20);
+
+    do {
+        printf("Role (1=Admin, 2=Agent) : ");
+        lireChaine(buffer, 10);
+        u.role = atoi(buffer);
+    } while (u.role != 1 && u.role != 2);
+
+    FILE* f = fopen(usersFile, "ab");
+    fwrite(&u, sizeof(User), 1, f);
+    fclose(f);
+    printf("[SUCCES] Utilisateur %s ajoute.\n", u.username);
+}
 
 int main() {
     int choixPrincipal, sousChoix;
     char buffer[10];
+    int userRole = 0; // Stockera le rôle de la personne connectée
 
-    // Initialisation du générateur aléatoire pour les ID factures
+    // 1. LA SECURITE D'ABORD
+    userRole = loginSystem();
+
+    if (userRole == 0) {
+        return 0; // On quitte si le login a échoué
+    }
+
+    // Initialisation random
     srand(time(NULL));
 
     do {
         printf("\n==========================================\n");
-        printf("   SYSTEME DE FACTURATION ELECTRICITE     \n");
+        printf("   SYSTEME DE FACTURATION (%s)     \n", (userRole == 1) ? "ADMIN" : "AGENT");
         printf("==========================================\n");
         printf("1. Gestion des Clients\n");
         printf("2. Gestion des Compteurs\n");
         printf("3. Gestion des Factures & Paiements\n");
+
+        // OPTION RESERVEE AUX ADMINS
+        if (userRole == 1) {
+            printf("9. ADMINISTRATION (Gestion Utilisateurs)\n");
+        }
+
         printf("0. Quitter\n");
         printf("------------------------------------------\n");
         printf("Votre choix : ");
 
         lireChaine(buffer, 10);
-        // Si l'utilisateur tape juste Entrée, on recommence
-        if (strlen(buffer) == 0 || !estToutChiffres(buffer)) continue;
-
+        if (!estToutChiffres(buffer)) continue;
         choixPrincipal = atoi(buffer);
 
         switch (choixPrincipal) {
         case 1: // CLIENTS
             printf("\n--- MENU CLIENTS ---\n");
-            printf("1. Ajouter\n2. Afficher\n3. Modifier\n4. Supprimer\nChoix : ");
-            lireChaine(buffer, 10);
-            sousChoix = atoi(buffer);
-            if (sousChoix == 1) addClient();
-            else if (sousChoix == 2) displayClients();
-            else if (sousChoix == 3) modifyClient();
-            else if (sousChoix == 4) deleteClient();
-            break;
+            printf("1. Ajouter\n2. Afficher\n3. Modifier\n");
+            // SEUL L'ADMIN PEUT SUPPRIMER
+            if (userRole == 1) printf("4. [ADMIN] Supprimer\n");
 
-        case 2: // COMPTEURS
-            printf("\n--- MENU COMPTEURS ---\n");
-            printf("1. Ajouter\n2. Afficher\n3. Supprimer\nChoix : ");
-            lireChaine(buffer, 10);
-            sousChoix = atoi(buffer);
-            if (sousChoix == 1) ajouterCompteur();
-            else if (sousChoix == 2) afficherCompteurs();
-            else if (sousChoix == 3) supprimerCompteur();
-            break;
-
-        case 3: // FACTURATION AVANCEE
-            printf("\n--- MENU FACTURATION ---\n");
-            printf("1. Etablir une facture\n");
-            printf("2. Enregistrer un Paiement\n");
-            printf("3. Afficher l'historique\n");
-            printf("4. Re-Imprimer une facture (Fichier)\n");
             printf("Choix : ");
             lireChaine(buffer, 10);
             sousChoix = atoi(buffer);
 
+            if (sousChoix == 1) addClient();
+            else if (sousChoix == 2) displayClients();
+            else if (sousChoix == 3) modifyClient();
+            else if (sousChoix == 4) {
+                // Double vérification de sécurité
+                if (userRole == 1) deleteClient();
+                else printf(">> ACCES REFUSE : Vous n'etes pas Admin.\n");
+            }
+            break;
+
+        case 2: // COMPTEURS
+            printf("\n--- MENU COMPTEURS ---\n");
+            printf("1. Ajouter\n2. Afficher\n");
+            if (userRole == 1) printf("3. [ADMIN] Supprimer\n");
+
+            printf("Choix : ");
+            lireChaine(buffer, 10);
+            sousChoix = atoi(buffer);
+
+            if (sousChoix == 1) ajouterCompteur();
+            else if (sousChoix == 2) afficherCompteurs();
+            else if (sousChoix == 3) {
+                if (userRole == 1) supprimerCompteur();
+                else printf(">> ACCES REFUSE.\n");
+            }
+            break;
+
+        case 3: // FACTURATION
+            // Tout le monde peut facturer et encaisser
+            printf("\n--- MENU FACTURATION ---\n");
+            printf("1. Etablir une facture\n2. Enregistrer un Paiement\n3. Historique\n4. Re-Imprimer\nChoix : ");
+            lireChaine(buffer, 10);
+            sousChoix = atoi(buffer);
             if (sousChoix == 1) ajouterFacture();
             else if (sousChoix == 2) payerFacture();
             else if (sousChoix == 3) afficherFactures();
             else if (sousChoix == 4) {
-                printf("Entrez l'ID Facture : ");
-                lireChaine(buffer, 20);
+                printf("ID Facture : "); lireChaine(buffer, 20);
                 genererFacturePDF(atoi(buffer));
             }
             break;
 
-        case 0: printf("Fermeture du systeme...\n"); break;
+        case 9: // MENU ADMINISTRATION
+            if (userRole == 1) {
+                ajouterUtilisateur();
+            }
+            else {
+                printf(">> Choix invalide.\n");
+            }
+            break;
+
+        case 0: printf("Deconnexion...\n"); break;
         default: printf("Choix invalide.\n");
         }
-    } while (choixPrincipal != 0);
+    } while (choixPrincipal != 0); 
+
+
 
     return 0;
 }
-
-
