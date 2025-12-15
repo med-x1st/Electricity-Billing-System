@@ -1,0 +1,8 @@
+.vs/
+.vscode/
+*.exe
+*.o
+*.out
+*.bin
+Debug/
+x64/
