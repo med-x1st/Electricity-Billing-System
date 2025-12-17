@@ -55,6 +55,13 @@ typedef struct {
     int role; // 1 = ADMIN (Tout faire), 2 = AGENT (Ajouter/Facturer seulement)
 } User;
 
+void header(char* headerTitle) {
+    system("cls");
+    printf("\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+    printf("\t\t%s \n", headerTitle);
+    printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+}
+
 int estToutChiffres(const char* chaine) {
     if (strlen(chaine) == 0) return 0; // Vide
     for (int i = 0; chaine[i] != '\0'; i++) {
@@ -502,36 +509,36 @@ void deleteClient() {
 }
 
 void displayClients() {
-    int nombreClients = 0;
+    Client c;
+    FILE* fichier = fopen(clientsFile, "rb"); // Opens file directly
 
-    // 1. On récupère le tableau complet via la fonction
-    Client* liste = getAllClients(&nombreClients);
-
-    // 2. Vérification si vide ou erreur
-    if (liste == NULL) {
-        printf("\nAucun fichier client trouve ou liste vide.\n");
+    // 1. Check if file exists
+    if (fichier == NULL) {
+        printf("\n[INFO] Aucun client enregistre ou fichier introuvable.\n");
         return;
     }
 
-    printf("\n--- Liste des Clients (%d trouves) ---\n", nombreClients);
-    printf("%-5s %-15s %-15s %-20s %-20s %-15s\n", "ID", "Nom", "Prenom", "Adresse", "Email", "Tel");
-    printf("----------------------------------------------------------------------------------------------------\n");
+    // 2. Print Header with dividers
+    printf("\n--- Liste des Clients ---\n");
+    // Widths: ID(5), Nom(15), Prenom(15), Adresse(20), Email(20), Tel(15)
+    printf("%-5s | %-15s | %-15s | %-20s | %-20s | %-15s\n",
+        "ID", "Nom", "Prenom", "Adresse", "Email", "Tel");
 
-    // 3. On parcourt le TABLEAU (et non plus le fichier)
-    for (int i = 0; i < nombreClients; i++) {
-        printf("%-5d %-15s %-15s %-20s %-20s %-15s\n",
-            liste[i].id_client,
-            liste[i].nom,
-            liste[i].prenom,
-            liste[i].adresse,
-            liste[i].email,
-            liste[i].telephone);
+    printf("--------------------------------------------------------------------------------------------------------------\n");
+
+    // 3. Read loop (No malloc needed)
+    while (fread(&c, sizeof(Client), 1, fichier)) {
+        printf("%-5d | %-15s | %-15s | %-20s | %-20s | %-15s\n",
+            c.id_client,
+            c.nom,
+            c.prenom,
+            c.adresse,
+            c.email,
+            c.telephone);
     }
 
-    // 4. IMPORTANT : On libère la mémoire allouée par malloc dans getAllClients
-    free(liste);
-
-
+    // 4. Close file
+    fclose(fichier);
     printf("\n");
 }
 //end of client crud operations
@@ -667,6 +674,7 @@ void ajouterCompteur() {
         printf("\n[SUCCES] Compteur ajoute pour le client %d !\n", cpt.id_client);
         fclose(fichier);
     }
+    printf("\n");
 }
 
 void supprimerCompteur() {
@@ -710,6 +718,7 @@ void supprimerCompteur() {
         remove("temp_cpt.dat");
         printf("[INFO] Matricule introuvable, aucune suppression faite.\n");
     }
+    printf("\n");
 }
 
 void updateIndexCompteur(int idClient, int nouvelIndex) {
@@ -738,6 +747,7 @@ void updateIndexCompteur(int idClient, int nouvelIndex) {
         }
     }
     fclose(fichier);
+    printf("\n");
 }
 
 // Remplit les variables pointées avec les infos du compteur du client donné
@@ -787,6 +797,7 @@ void afficherCompteurs() {
             cpt.matricule, cpt.id_client, typeStr, cpt.index_actuel);
     }
     fclose(fichier);
+    printf("\n");
 }
 
 // --- Fonction Menu pour les Compteurs ---
@@ -911,6 +922,7 @@ void genererFacturePDF(int idFacture) {
 
     printf("\n[SUCCES] La facture a ete exportee dans '%s' !\n", nomFichier);
     fclose(sortie);
+    printf("\n");
 }
 
 // Fonction 2 : Logique Mathématique (Sans calcul de remise)
@@ -1020,6 +1032,8 @@ void ajouterFacture() {
     else {
         perror("Erreur sauvegarde");
     }
+
+    printf("\n");
 }
 
 // Fonction 4 : Payer une facture (Reste inchangée mais je la remets pour être complet)
@@ -1073,6 +1087,8 @@ void payerFacture() {
     }
     if (!trouve) printf("Facture introuvable.\n");
     fclose(fichier);
+
+    printf("\n");
 }
 
 void afficherFactures() {
@@ -1094,6 +1110,7 @@ void afficherFactures() {
             (f.estPaye ? "PAYE" : "NON"));
     }
     fclose(fic);
+    printf("\n");
 }
 //////
 ////
@@ -1104,7 +1121,6 @@ void afficherFactures() {
 //////
 ////
 //
-
 
 void ajouterUtilisateur() {
     User u;
@@ -1130,13 +1146,154 @@ void ajouterUtilisateur() {
     printf("[SUCCES] Utilisateur %s ajoute.\n", u.username);
 }
 
+void afficherUtilisateurs() {
+    User u;
+    FILE* f = fopen(usersFile, "rb");
 
-void header(char* headerTitle) {
-    system("cls");
-    printf("\n- - - - - - - - - - - - - - - - - - - - - - -\n");
-    printf("           %s \n",headerTitle);
-    printf("- - - - - - - - - - - - - - - - - - - - - - -\n\n");
+    if (f == NULL) {
+        printf("\n[INFO] Aucun fichier utilisateur trouve ou liste vide.\n");
+        return;
+    }
+
+    printf("\n--- Liste des Utilisateurs ---\n");
+    printf("%-20s | %-20s | %-10s\n", "Nom d'utilisateur", "Mot de passe", "Role");
+    printf("-------------------------------------------------------------\n");
+
+    while (fread(&u, sizeof(User), 1, f)) {
+        char roleStr[10];
+
+        // Translate Role ID to String for display
+        if (u.role == 1) strcpy(roleStr, "ADMIN");
+        else if (u.role == 2) strcpy(roleStr, "AGENT");
+        else strcpy(roleStr, "INCONNU");
+
+        printf("%-20s | %-20s | %-10s\n",
+            u.username,
+            u.password, // Showing password for admin management purposes
+            roleStr);
+    }
+    fclose(f);
 }
+
+void modifierUtilisateur() {
+    User u;
+    char targetUser[20];
+    char buffer[10];
+    int found = 0;
+
+    header("MODIFIER UN UTILISATEUR");
+
+    printf("Entrez le nom d'utilisateur a modifier : ");
+    lireChaine(targetUser, 20);
+
+    FILE* f = fopen(usersFile, "rb+"); // Read + Write mode
+    if (f == NULL) {
+        printf("\n>> ERREUR : Fichier introuvable.\n");
+        return;
+    }
+
+    while (fread(&u, sizeof(User), 1, f)) {
+        if (strcmp(u.username, targetUser) == 0) {
+            found = 1;
+            printf("\n--- Utilisateur Trouve : %s ---\n", u.username);
+            printf("Role actuel : %d (%s)\n", u.role, (u.role == 1 ? "ADMIN" : "AGENT"));
+
+            // 1. New Password
+            printf("\nNouveau Mot de passe : ");
+            lireChaine(u.password, 20);
+
+            // 2. New Role
+            do {
+                printf("Nouveau Role (1=Admin, 2=Agent) : ");
+                lireChaine(buffer, 10);
+                u.role = atoi(buffer);
+            } while (u.role != 1 && u.role != 2);
+
+            // 3. Move file pointer BACK by one struct size to overwrite
+            fseek(f, -((long)sizeof(User)), SEEK_CUR);
+
+            // 4. Write new data
+            fwrite(&u, sizeof(User), 1, f);
+
+            printf("\n[SUCCES] Informations mises a jour.\n");
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("\n>> ERREUR : Utilisateur '%s' introuvable.\n", targetUser);
+    }
+
+    fclose(f);
+}
+
+void supprimerUtilisateur() {
+    User u;
+    char targetUser[20];
+    char confirmation[10];
+    int found = 0;
+
+    header("SUPPRIMER UN UTILISATEUR");
+
+    printf("Entrez le nom d'utilisateur a supprimer : ");
+    lireChaine(targetUser, 20);
+
+    // Use "admin" as a hardcoded check to prevent deleting the last super-admin 
+    // (Optional safety feature, remove if not needed)
+    if (strcmp(targetUser, "admin") == 0) {
+        printf("\n>> ERREUR : Impossible de supprimer le compte Super-Admin par defaut.\n");
+        return;
+    }
+
+    FILE* f = fopen(usersFile, "rb");
+    FILE* temp = fopen("temp_users.dat", "wb");
+
+    if (f == NULL) {
+        printf("\n>> ERREUR : Fichier introuvable.\n");
+        if (temp) fclose(temp); // Close temp if it opened
+        return;
+    }
+
+    // Search loop
+    while (fread(&u, sizeof(User), 1, f)) {
+        if (strcmp(u.username, targetUser) == 0) {
+            found = 1;
+            printf("\n--- Utilisateur Trouve : %s (Role: %d) ---\n", u.username, u.role);
+            printf("Etes-vous sur de vouloir supprimer ? (O/N) : ");
+            lireChaine(confirmation, 10);
+
+            if (_stricmp(confirmation, "O") == 0 || _stricmp(confirmation, "oui") == 0) {
+                printf("\n[INFO] Utilisateur supprime.\n");
+                // Do NOT write to temp -> effectively deletes it
+            }
+            else {
+                printf("\n[INFO] Suppression annulee.\n");
+                fwrite(&u, sizeof(User), 1, temp); // Keep it
+            }
+        }
+        else {
+            // Not the target, copy to temp
+            fwrite(&u, sizeof(User), 1, temp);
+        }
+    }
+
+    fclose(f);
+    fclose(temp);
+
+    if (found) {
+        remove(usersFile);             // Delete old file
+        rename("temp_users.dat", usersFile); // Rename temp to new
+    }
+    else {
+        remove("temp_users.dat"); // Delete temp if nothing happened
+        printf("\n>> ERREUR : Utilisateur '%s' introuvable.\n", targetUser);
+    }
+}
+
+//////
+////
+//
+
 
 void backToMenu(char * messageToShow) {
     printf("%s",messageToShow);
@@ -1178,7 +1335,7 @@ void gestionClientsMainFunction(int userRole) {
         // Check 1: Empty Input
         if (buffer[0] == '\0') {
             printf("\n\t>> ERREUR : Aucune saisie detectee.\n");
-            system("pause");
+            backToMenu("Appuyez sur une touche pour reessayer...");
             continue; // Go back to start of loop (re-draw menu)
         }
 
@@ -1193,7 +1350,7 @@ void gestionClientsMainFunction(int userRole) {
 
         if (isNumeric == 0) {
             printf("\a\n\t>> ERREUR : Saisie invalide. Entrez un NOMBRE.\n");
-            system("pause");
+            backToMenu("Appuyez sur une touche pour reessayer...");
             continue; // Go back to start of loop
         }
 
@@ -1201,7 +1358,7 @@ void gestionClientsMainFunction(int userRole) {
         choix = atoi(buffer);
         if (choix < 0 || choix > maxOption) {
             printf("\a\n\t>> ERREUR : Choix invalide (0 - %d).\n", maxOption);
-            system("pause");
+            backToMenu("Appuyez sur une touche pour reessayer...");
             continue; // Go back to start of loop
         }
 
@@ -1233,10 +1390,348 @@ void gestionClientsMainFunction(int userRole) {
             break;
         }
         if (choix != 0) {
-            backToMenu("Press any key to go back to GESTION DES CLIENTS MENU...");
+            backToMenu("Appuyez sur une touche pour revenir au menu GESTION DES CLIENTS...");
         }
 
     } while (choix != 0); // Keep looping until user explicitly types 0
+}
+
+// --- DISPLAY FUNCTION ---
+void gestionCompteursMenuScreen(int userRole) {
+    // header() handles system("cls")
+    header("GESTION DES COMPTEURS");
+
+    printf("\t   [1] Ajouter un nouveau compteur\n");
+    printf("\t   [2] Afficher la liste des compteurs\n");
+
+    // Only show this if user is Admin
+    if (userRole == 1) {
+        printf("\t   [3] [ADMIN] Supprimer un compteur\n");
+    }
+
+    printf("\n\t   [0] Retour au menu principal\n");
+    printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+    printf("\tVotre choix : ");
+}
+
+// --- LOGIC FUNCTION ---
+void gestionCompteursMainFunction(int userRole) {
+    int choix = -1;
+    char buffer[10];
+
+    // logic: 3 options for Admin, 2 for Standard users
+    int maxOption = (userRole == 1) ? 3 : 2;
+
+    do {
+        // A. Show Menu
+        gestionCompteursMenuScreen(userRole);
+
+        // B. Get Input
+        lireChaine(buffer, 10);
+
+        // --- VALIDATION PHASE ---
+
+        // Check 1: Empty Input
+        if (buffer[0] == '\0') {
+            printf("\n\t>> ERREUR : Aucune saisie detectee.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // Check 2: Numeric only
+        int isNumeric = 1;
+        for (int i = 0; buffer[i] != '\0'; i++) {
+            if (!isdigit(buffer[i])) {
+                isNumeric = 0;
+                break;
+            }
+        }
+
+        if (isNumeric == 0) {
+            printf("\a\n\t>> ERREUR : Saisie invalide. Entrez un NOMBRE.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // Check 3: Range
+        choix = atoi(buffer);
+        if (choix < 0 || choix > maxOption) {
+            printf("\a\n\t>> ERREUR : Choix invalide (0 - %d).\n", maxOption);
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // --- EXECUTION PHASE ---
+
+        switch (choix) {
+        case 1:
+             system("cls"); // Uncomment if ajouterCompteur doesn't clear screen
+            ajouterCompteur();
+            break;
+        case 2:
+            system("cls");
+            afficherCompteurs();
+            break;
+        case 3:
+            // Security Check
+            if (userRole == 1) {
+                system("cls");
+                supprimerCompteur();
+            }
+            break;
+        case 0:
+            // Exit loop
+            break;
+        }
+
+        // Pause loop if not exiting
+        if (choix != 0) {
+            backToMenu("Appuyez sur une touche pour revenir au menu Compteurs...");
+        }
+
+    } while (choix != 0);
+}
+
+// --- DISPLAY FUNCTION ---
+void gestionFacturationMenuScreen() {
+    // header() handles system("cls")
+    header("GESTION DES FACTURES");
+
+    printf("\t   [1] Etablir une facture (Consommation)\n");
+    printf("\t   [2] Enregistrer un paiement\n");
+    printf("\t   [3] Historique des factures\n");
+    printf("\t   [4] Re-Imprimer une facture (PDF)\n");
+
+    printf("\n\t   [0] Retour au menu principal\n");
+    printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+    printf("\tVotre choix : ");
+}
+
+// --- LOGIC FUNCTION ---
+void gestionFacturationMainFunction() {
+    int choix = -1;
+    char buffer[20]; // Increased buffer size for safety
+    int maxOption = 4;
+
+    do {
+        // A. Show Menu
+        gestionFacturationMenuScreen();
+
+        // B. Get Input
+        lireChaine(buffer, 10);
+
+        // --- VALIDATION PHASE ---
+
+        // Check 1: Empty Input
+        if (buffer[0] == '\0') {
+            printf("\n\t>> ERREUR : Aucune saisie detectee.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // Check 2: Numeric only
+        int isNumeric = 1;
+        for (int i = 0; buffer[i] != '\0'; i++) {
+            if (!isdigit(buffer[i])) {
+                isNumeric = 0;
+                break;
+            }
+        }
+
+        if (isNumeric == 0) {
+            printf("\a\n\t>> ERREUR : Saisie invalide. Entrez un NOMBRE.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // Check 3: Range
+        choix = atoi(buffer);
+        if (choix < 0 || choix > maxOption) {
+            printf("\a\n\t>> ERREUR : Choix invalide (0 - %d).\n", maxOption);
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // --- EXECUTION PHASE ---
+
+        switch (choix) {
+        case 1:
+            system("cls"); // Clear screen before function
+            ajouterFacture();
+            break;
+
+        case 2:
+            system("cls");
+            payerFacture();
+            break;
+
+        case 3:
+            system("cls");
+            afficherFactures();
+            break;
+
+        case 4:
+            system("cls");
+            // Local logic for ID input to keep it clean
+            header("RE-IMPRESSION PDF");
+            printf("\tEntrez l'ID de la facture a imprimer : ");
+            lireChaine(buffer, 20);
+
+            // Simple validation for the ID
+            if (isdigit(buffer[0])) {
+                genererFacturePDF(atoi(buffer));
+            }
+            else {
+                printf("\n\t>> Erreur : ID invalide.\n");
+            }
+            break;
+
+        case 0:
+            // Exit loop
+            break;
+        }
+
+        // Pause loop if not exiting
+        if (choix != 0) {
+            backToMenu("Appuyez sur une touche pour revenir au menu Facturation...");
+        }
+
+    } while (choix != 0);
+}
+
+// --- DISPLAY FUNCTION ---
+void gestionUsersMenuScreen() {
+    header("GESTION DES UTILISATEURS");
+    printf("\t   [1] Ajouter un utilisateur\n");
+    printf("\t   [2] Afficher les utilisateurs\n");
+    printf("\t   [3] Modifier un utilisateur\n");
+    printf("\t   [4] Supprimer un utilisateur\n");
+    printf("\n\t   [0] Retour au menu principal\n");
+    printf("\t================================================\n");
+    printf("\tVotre choix : ");
+}
+
+// --- LOGIC FUNCTION ---
+void gestionUsersMainFunction() {
+    int choix = -1;
+    char buffer[10];
+    int maxOption = 4;
+
+    do {
+        // A. Show Menu
+        gestionUsersMenuScreen();
+
+        // B. Get Input
+        lireChaine(buffer, 10);
+
+        // --- VALIDATION PHASE ---
+        if (buffer[0] == '\0') {
+            printf("\n\t>> ERREUR : Aucune saisie.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        int isNumeric = 1;
+        for (int i = 0; buffer[i] != '\0'; i++) {
+            if (!isdigit(buffer[i])) { isNumeric = 0; break; }
+        }
+
+        if (!isNumeric) {
+            printf("\a\n\t>> ERREUR : Entrez un NOMBRE.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        choix = atoi(buffer);
+        if (choix < 0 || choix > maxOption) {
+            printf("\a\n\t>> ERREUR : Choix invalide.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+            continue;
+        }
+
+        // --- EXECUTION PHASE ---
+        switch (choix) {
+        case 1:
+            system("cls");
+            ajouterUtilisateur();
+            break;
+        case 2:
+            system("cls");
+            afficherUtilisateurs();
+            break;
+        case 3:
+            system("cls");
+            modifierUtilisateur();
+            break;
+        case 4:
+            system("cls");
+            supprimerUtilisateur();
+            break;
+        case 0:
+            break; // Exit
+        }
+
+        if (choix != 0) {
+            backToMenu("Appuyez sur une touche pour revenir au menu Utilisateurs...");
+        }
+
+    } while (choix != 0);
+}
+void menuPrincipal(int userRole) {
+    int choixPrincipal;
+    char buffer[10];
+
+    do {
+        system("cls");
+        printf("\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+        printf("\t\tSYSTEME DE FACTURATION (%s)\n", (userRole == 1) ? "ADMIN" : "AGENT");
+        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+        printf("        [1] Gestion des Clients\n");
+        printf("        [2] Gestion des Compteurs\n");
+        printf("        [3] Gestion des Factures & Paiements\n");
+
+        if (userRole == 1) {
+            printf("        [4] ADMINISTRATION (Gestion Utilisateurs)\n");
+        }
+
+        printf("        [0] Deconnexion (Logout)\n"); // Changed from Quitter to Logout
+        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+
+        if (userRole == 1) printf("CHOOSE WHAT DO YOU WANT ? [0 TO 4] ? ");
+        else printf("CHOOSE WHAT DO YOU WANT ? [0 TO 3] ? ");
+
+        lireChaine(buffer, 10);
+        if (!estToutChiffres(buffer)) continue;
+        choixPrincipal = atoi(buffer);
+
+        switch (choixPrincipal) {
+        case 1:
+            system("cls");
+            gestionClientsMainFunction(userRole);
+            break;
+        case 2:
+            gestionCompteursMainFunction(userRole);
+            break;
+        case 3:
+            system("cls");
+            gestionFacturationMainFunction();
+            break;
+        case 4:
+            if (userRole == 1) gestionUsersMainFunction();
+            else {
+                printf(">> Choix invalide.\n");
+                backToMenu("...");
+            }
+            break;
+        case 0:
+            printf("\n>> Deconnexion en cours...\n");
+            Sleep(1000); // Optional: wait 1 second
+            return; // <--- CRITICAL: This exits the Menu, going back to the Loop
+        default:
+            printf("Choix invalide.\n");
+            backToMenu("Appuyez sur une touche pour reessayer...");
+        }
+    } while (1); // Infinite loop until 'return' (case 0) is hit
 }
 
 int loginSystem() {
@@ -1281,104 +1776,36 @@ int loginSystem() {
     return 0; // Echec total
 }
 
-int main() {
-    int choixPrincipal, sousChoix;
-    char buffer[10];
-    int userRole = 0; // Stockera le rôle de la personne connectée
+void lancerApplication() {
+    int userRole = 0;
 
-    // 1. LA SECURITE D'ABORD
-    userRole = loginSystem();
-
-    if (userRole == 0) {
-        return 0; // On quitte si le login a échoué
-    }
-
-    // Initialisation random
+    // Initialisation random (Moved here so it runs once)
     srand(time(NULL));
 
-    do {
+    // The Infinite Global Loop
+    while (1) {
         system("cls");
-        printf("\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
-        printf("\t\tSYSTEME DE FACTURATION (%s)\n", (userRole == 1) ? "ADMIN" : "AGENT");
-        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
-        printf("        [1] Gestion des Clients\n");
-        printf("        [2] Gestion des Compteurs\n");
-        printf("        [3] Gestion des Factures & Paiements\n");
 
-        // OPTION RESERVEE AUX ADMINS
-        if (userRole == 1) {
-            printf("        [4] ADMINISTRATION (Gestion Utilisateurs)\n");
+        // 1. Run Login
+        userRole = loginSystem();
+
+        // 2. Check Result
+        if (userRole == 0) {
+            // Login failed 3 times OR user force-quit inside login
+            printf("\n>> Arret du systeme.\n");
+            exit(0); // Closes the program completely
         }
 
-        printf("        [0] Quitter\n");
-        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+        // 3. If Login Success, Run Menu
+        // This function will run until the user selects "0" (Logout)
+        menuPrincipal(userRole);
 
-        // Dynamic prompt to show the correct range depending on user role
-        if (userRole == 1) {
-            printf("CHOOSE WHAT DO YOU WANT ? [0 TO 4] ? ");
-        }
-        else {
-            printf("CHOOSE WHAT DO YOU WANT ? [0 TO 3] ? ");
-        }
+        // When menuPrincipal() returns, the loop repeats, 
+        // going back to step 1 (Login System)
+    }
+}
 
-        lireChaine(buffer, 10);
-        if (!estToutChiffres(buffer)) continue;
-        choixPrincipal = atoi(buffer);
-
-        switch (choixPrincipal) {
-        case 1: // CLIENTS
-            system("cls");
-            gestionClientsMainFunction(userRole);
-            break;
-
-        case 2: // COMPTEURS
-            header("Compteurs Menu");
-            printf("1. Ajouter\n2. Afficher\n");
-            if (userRole == 1) printf("3. [ADMIN] Supprimer\n");
-
-            printf("Choix : ");
-            lireChaine(buffer, 10);
-            sousChoix = atoi(buffer);
-
-            if (sousChoix == 1) ajouterCompteur();
-            else if (sousChoix == 2) afficherCompteurs();
-            else if (sousChoix == 3) {
-                if (userRole == 1) supprimerCompteur();
-                else printf(">> ACCES REFUSE.\n");
-            }
-            break;
-
-        case 3: // FACTURATION
-            // Tout le monde peut facturer et encaisser
-            printf("\n--- MENU FACTURATION ---\n");
-            header("Facturation Menu");
-            printf("1. Etablir une facture\n2. Enregistrer un Paiement\n3. Historique\n4. Re-Imprimer\nChoix : ");
-            lireChaine(buffer, 10);
-            sousChoix = atoi(buffer);
-            if (sousChoix == 1) ajouterFacture();
-            else if (sousChoix == 2) payerFacture();
-            else if (sousChoix == 3) afficherFactures();
-            else if (sousChoix == 4) {
-                printf("ID Facture : "); lireChaine(buffer, 20);
-                genererFacturePDF(atoi(buffer));
-            }
-            break;
-
-        case 9: // MENU ADMINISTRATION
-            if (userRole == 1) {
-                ajouterUtilisateur();
-            }
-            else {
-                printf(">> Choix invalide.\n");
-            }
-            break;
-
-        case 0: printf("Deconnexion...\n"); break;
-        default: printf("Choix invalide.\n");
-        }
-    } while (choixPrincipal != 0); 
-
-
-
+int main() {
+    lancerApplication();
     return 0;
 }
