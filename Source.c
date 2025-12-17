@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <conio.h>
-
+#include <windows.h>
 
 #define clientsFile "clients"
 #define compteursFile "compteur"
@@ -428,10 +428,9 @@ void deleteClient() {
     int idToDelete;
     int trouve = 0;
     Client c;
-    char buffer[100]; // Pour la saisie sécurisée
+    char buffer[100];
 
     // --- 1. Saisie sécurisée de l'ID ---
-    // On boucle tant que l'utilisateur ne donne pas un ID valide
     do {
         printf("\nEntrez l'ID du client a supprimer : ");
         lireChaine(buffer, 100);
@@ -445,15 +444,25 @@ void deleteClient() {
                 printf(">> Erreur : L'ID doit etre positif.\n");
             }
             else {
-                break; // ID valide, on peut continuer
+                break; // ID valide
             }
         }
     } while (1);
 
+    // ==============================================================================
+    // [NEW] CHECK INTEGRITY: Empêcher la suppression si le client a un compteur
+    // ==============================================================================
+    if (clientAUnCompteur(idToDelete) == 1) {
+        printf("\n[INTERDICTION] Impossible de supprimer le client ID %d.\n", idToDelete);
+        printf(">> Raison : Ce client possede un compteur actif.\n");
+        printf(">> Solution : Supprimez d'abord son compteur dans le menu 'Gestion Compteurs'.\n");
+        return; // <--- On quitte la fonction immédiatement
+    }
+    // ==============================================================================
+
     // --- 2. Ouverture des fichiers ---
     FILE* fichier = fopen(clientsFile, "rb");
 
-    // Petite astuce : si le fichier original n'existe pas, inutile de créer un temp
     if (fichier == NULL) {
         printf("Erreur : Fichier clients introuvable ou vide.\n");
         return;
@@ -462,19 +471,19 @@ void deleteClient() {
     FILE* temp = fopen("temp.dat", "wb");
     if (temp == NULL) {
         printf("Erreur : Impossible de creer le fichier temporaire.\n");
-        fclose(fichier); // Important : on n'oublie pas de fermer le premier fichier
+        fclose(fichier);
         return;
     }
 
     // --- 3. Copie sélective ---
-    // On copie tout dans 'temp' SAUF le client qui a l'ID à supprimer
     while (fread(&c, sizeof(Client), 1, fichier)) {
         if (c.id_client != idToDelete) {
+            // On garde ce client
             fwrite(&c, sizeof(Client), 1, temp);
         }
         else {
             trouve = 1;
-            // On affiche qui on vient de supprimer pour confirmation visuelle
+            // On affiche qui on supprime
             printf(">> Suppression du client : %s %s (ID: %d)\n", c.nom, c.prenom, c.id_client);
         }
     }
@@ -484,9 +493,7 @@ void deleteClient() {
     fclose(temp);
 
     if (trouve) {
-        // Suppression de l'ancien fichier
         if (remove(clientsFile) == 0) {
-            // Renommage du temporaire en "clients"
             if (rename("temp.dat", clientsFile) == 0) {
                 printf("[SUCCES] La suppression a ete effectuee.\n");
             }
@@ -499,11 +506,9 @@ void deleteClient() {
         }
     }
     else {
-        // Si on n'a rien trouvé, on supprime le fichier temporaire qui ne sert à rien
         remove("temp.dat");
-        printf("Aucun client trouve avec l'ID %d. Aucune modification faite.\n", idToDelete);
+        printf("Aucun client trouve avec l'ID %d.\n", idToDelete);
     }
-
 
     printf("\n");
 }
