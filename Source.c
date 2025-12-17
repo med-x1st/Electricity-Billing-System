@@ -4,7 +4,7 @@
 #include<string.h>
 #include <ctype.h>
 #include <time.h>
-
+#include <conio.h>
 
 
 #define clientsFile "clients"
@@ -286,6 +286,8 @@ void addClient() {
     else {
         perror("Erreur finale d'ecriture");
     }
+
+    printf("\n");
 }
 
 void modifyClient() {
@@ -411,6 +413,8 @@ void modifyClient() {
     }
 
     fclose(fichier);
+
+    printf("\n");
 }
 
 void deleteClient() {
@@ -492,6 +496,9 @@ void deleteClient() {
         remove("temp.dat");
         printf("Aucun client trouve avec l'ID %d. Aucune modification faite.\n", idToDelete);
     }
+
+
+    printf("\n");
 }
 
 void displayClients() {
@@ -523,6 +530,9 @@ void displayClients() {
 
     // 4. IMPORTANT : On libère la mémoire allouée par malloc dans getAllClients
     free(liste);
+
+
+    printf("\n");
 }
 //end of client crud operations
 //////
@@ -1095,14 +1105,147 @@ void afficherFactures() {
 ////
 //
 
+
+void ajouterUtilisateur() {
+    User u;
+    char buffer[10];
+    printf("\n- - - - - - - - - - - - - - - - - - - - - - -\n");
+    printf("           Creation Nouvel Utilisateur\n");
+    printf("- - - - - - - - - - - - - - - - - - - - - - -\n");
+
+    printf("Nom d'utilisateur : ");
+    lireChaine(u.username, 20);
+    printf("Mot de passe : ");
+    lireChaine(u.password, 20);
+
+    do {
+        printf("Role (1=Admin, 2=Agent) : ");
+        lireChaine(buffer, 10);
+        u.role = atoi(buffer);
+    } while (u.role != 1 && u.role != 2);
+
+    FILE* f = fopen(usersFile, "ab");
+    fwrite(&u, sizeof(User), 1, f);
+    fclose(f);
+    printf("[SUCCES] Utilisateur %s ajoute.\n", u.username);
+}
+
+
+void header(char* headerTitle) {
+    system("cls");
+    printf("\n- - - - - - - - - - - - - - - - - - - - - - -\n");
+    printf("           %s \n",headerTitle);
+    printf("- - - - - - - - - - - - - - - - - - - - - - -\n\n");
+}
+
+void backToMenu(char * messageToShow) {
+    printf("%s",messageToShow);
+    _getch();
+}
+
+void gestionClientsMenueScreen(int userRole) {
+    header("GESTION DES CLIENTS");
+
+    printf("\t   [1] Ajouter un nouveau client\n");
+    printf("\t   [2] Afficher la liste des clients\n");
+    printf("\t   [3] Modifier les informations\n");
+
+    // Only show this if user is Admin
+    if (userRole == 1) {
+        printf("\t   [4] [ADMIN] Supprimer un client\n");
+    }
+
+    printf("\n\t   [0] Retour au menu principal\n");
+    printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+    printf("\tVotre choix : ");
+}
+
+void gestionClientsMainFunction(int userRole) {
+    int choix = -1; // Initialize to -1 so the loop starts
+    char buffer[10];
+    int maxOption = (userRole == 1) ? 4 : 3;
+
+    do {
+        // A. Clear and Show Menu
+        system("cls");
+        gestionClientsMenueScreen(userRole);
+
+        // B. Get Input
+        lireChaine(buffer, 10);
+
+        // --- VALIDATION PHASE ---
+
+        // Check 1: Empty Input
+        if (buffer[0] == '\0') {
+            printf("\n\t>> ERREUR : Aucune saisie detectee.\n");
+            system("pause");
+            continue; // Go back to start of loop (re-draw menu)
+        }
+
+        // Check 2: Numeric only
+        int isNumeric = 1;
+        for (int i = 0; buffer[i] != '\0'; i++) {
+            if (!isdigit(buffer[i])) {
+                isNumeric = 0;
+                break;
+            }
+        }
+
+        if (isNumeric == 0) {
+            printf("\a\n\t>> ERREUR : Saisie invalide. Entrez un NOMBRE.\n");
+            system("pause");
+            continue; // Go back to start of loop
+        }
+
+        // Check 3: Range
+        choix = atoi(buffer);
+        if (choix < 0 || choix > maxOption) {
+            printf("\a\n\t>> ERREUR : Choix invalide (0 - %d).\n", maxOption);
+            system("pause");
+            continue; // Go back to start of loop
+        }
+
+        // --- EXECUTION PHASE ---
+
+        switch (choix) {
+        case 1:
+            system("cls");
+            addClient();
+            break;
+        case 2:
+            system("cls");
+            displayClients();
+            break;
+        case 3:
+            system("cls");
+            modifyClient();
+            break;
+        case 4:
+            // Security check is technically redundant here because maxOption 
+            // prevents non-admins from entering 4, but good for safety.
+            if (userRole == 1) {
+                system("cls");
+                deleteClient();
+            }
+            break;
+        case 0:
+            // Do nothing. The loop condition (choix != 0) will handle the exit.
+            break;
+        }
+        if (choix != 0) {
+            backToMenu("Press any key to go back to GESTION DES CLIENTS MENU...");
+        }
+
+    } while (choix != 0); // Keep looping until user explicitly types 0
+}
+
 int loginSystem() {
     User uInput, uFile;
     int tentatives = 0;
     int connecte = 0; // 0 = Echec, Sinon renvoie le Rôle (1 ou 2)
 
-    printf("\n- - - - - - - - - - - - - - - - - - - - - - -\n");
-    printf("           Login Screen\n");
-    printf("- - - - - - - - - - - - - - - - - - - - - - -\n");
+    header("Login Screen");
+
 
     do {
         printf("Entrer userName : ");
@@ -1138,29 +1281,6 @@ int loginSystem() {
     return 0; // Echec total
 }
 
-void ajouterUtilisateur() {
-    User u;
-    char buffer[10];
-    printf("\n-----------------------------------------------------------------\n");
-    printf("\n Creation Nouvel Utilisateur \n");
-    printf("-----------------------------------------------------------------");
-    printf("Nom d'utilisateur : ");
-    lireChaine(u.username, 20);
-    printf("Mot de passe : ");
-    lireChaine(u.password, 20);
-
-    do {
-        printf("Role (1=Admin, 2=Agent) : ");
-        lireChaine(buffer, 10);
-        u.role = atoi(buffer);
-    } while (u.role != 1 && u.role != 2);
-
-    FILE* f = fopen(usersFile, "ab");
-    fwrite(&u, sizeof(User), 1, f);
-    fclose(f);
-    printf("[SUCCES] Utilisateur %s ajoute.\n", u.username);
-}
-
 int main() {
     int choixPrincipal, sousChoix;
     char buffer[10];
@@ -1177,21 +1297,29 @@ int main() {
     srand(time(NULL));
 
     do {
-        printf("\n==========================================\n");
-        printf("   SYSTEME DE FACTURATION (%s)     \n", (userRole == 1) ? "ADMIN" : "AGENT");
-        printf("==========================================\n");
-        printf("1. Gestion des Clients\n");
-        printf("2. Gestion des Compteurs\n");
-        printf("3. Gestion des Factures & Paiements\n");
+        system("cls");
+        printf("\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+        printf("\t\tSYSTEME DE FACTURATION (%s)\n", (userRole == 1) ? "ADMIN" : "AGENT");
+        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+        printf("        [1] Gestion des Clients\n");
+        printf("        [2] Gestion des Compteurs\n");
+        printf("        [3] Gestion des Factures & Paiements\n");
 
         // OPTION RESERVEE AUX ADMINS
         if (userRole == 1) {
-            printf("9. ADMINISTRATION (Gestion Utilisateurs)\n");
+            printf("        [4] ADMINISTRATION (Gestion Utilisateurs)\n");
         }
 
-        printf("0. Quitter\n");
-        printf("------------------------------------------\n");
-        printf("Votre choix : ");
+        printf("        [0] Quitter\n");
+        printf("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n\n");
+
+        // Dynamic prompt to show the correct range depending on user role
+        if (userRole == 1) {
+            printf("CHOOSE WHAT DO YOU WANT ? [0 TO 4] ? ");
+        }
+        else {
+            printf("CHOOSE WHAT DO YOU WANT ? [0 TO 3] ? ");
+        }
 
         lireChaine(buffer, 10);
         if (!estToutChiffres(buffer)) continue;
@@ -1199,27 +1327,12 @@ int main() {
 
         switch (choixPrincipal) {
         case 1: // CLIENTS
-            printf("\n--- MENU CLIENTS ---\n");
-            printf("1. Ajouter\n2. Afficher\n3. Modifier\n");
-            // SEUL L'ADMIN PEUT SUPPRIMER
-            if (userRole == 1) printf("4. [ADMIN] Supprimer\n");
-
-            printf("Choix : ");
-            lireChaine(buffer, 10);
-            sousChoix = atoi(buffer);
-
-            if (sousChoix == 1) addClient();
-            else if (sousChoix == 2) displayClients();
-            else if (sousChoix == 3) modifyClient();
-            else if (sousChoix == 4) {
-                // Double vérification de sécurité
-                if (userRole == 1) deleteClient();
-                else printf(">> ACCES REFUSE : Vous n'etes pas Admin.\n");
-            }
+            system("cls");
+            gestionClientsMainFunction(userRole);
             break;
 
         case 2: // COMPTEURS
-            printf("\n--- MENU COMPTEURS ---\n");
+            header("Compteurs Menu");
             printf("1. Ajouter\n2. Afficher\n");
             if (userRole == 1) printf("3. [ADMIN] Supprimer\n");
 
@@ -1238,6 +1351,7 @@ int main() {
         case 3: // FACTURATION
             // Tout le monde peut facturer et encaisser
             printf("\n--- MENU FACTURATION ---\n");
+            header("Facturation Menu");
             printf("1. Etablir une facture\n2. Enregistrer un Paiement\n3. Historique\n4. Re-Imprimer\nChoix : ");
             lireChaine(buffer, 10);
             sousChoix = atoi(buffer);
